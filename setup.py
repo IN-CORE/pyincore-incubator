@@ -7,22 +7,19 @@
 from setuptools import setup, find_packages
 
 # version number of pyincore-incubator
-version = '0.1.0'
+version = "0.1.0"
 
 with open("README.rst", encoding="utf-8") as f:
     readme = f.read()
 
 setup(
-    name='pyincore_incubator',
+    name="pyincore_incubator",
     version=version,
-    description='IN-CORE analysis incubator python package',
+    description="IN-CORE analysis incubator python package",
     long_description=readme,
-    long_description_content_type='text/x-rst',
-
-    url='https://incore.ncsa.illinois.edu',
-
+    long_description_content_type="text/x-rst",
+    url="https://incore.ncsa.illinois.edu",
     license="Mozilla Public License v2.0",
-
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
@@ -30,9 +27,8 @@ setup(
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Topic :: Scientific/Engineering"
+        "Topic :: Scientific/Engineering",
     ],
-
     keywords=[
         "infrastructure",
         "resilience",
@@ -43,32 +39,24 @@ setup(
         "tsunami",
         "tornado",
         "hurricane",
-        "dislocation"
+        "dislocation",
     ],
-
-    packages=find_packages(where=".", exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+    packages=find_packages(
+        where=".", exclude=["*.tests", "*.tests.*", "tests.*", "tests"]
+    ),
     include_package_data=True,
-    package_data={
-        '': ['*.ini']
-    },
-
+    package_data={"": ["*.ini"]},
     python_requires=">=3.9",
-
-    install_requires=[
-        'pyincore>=1.18.0',
-        'pre-commit'
-    ],
-
+    install_requires=["pyincore", "pre-commit"],
     extras_require={
-        'test': [
-            'pycodestyle>=2.6.0',
-            'pytest>=3.9.0',
-            'python-jose>=3.0',
+        "test": [
+            "pycodestyle>=2.6.0",
+            "pytest>=3.9.0",
+            "python-jose>=3.0",
         ]
     },
-
     project_urls={
-        'Bug Reports': 'https://github.com/IN-CORE/pyincore/issues',
-        'Source': 'https://github.com/IN-CORE/pyincore',
+        "Bug Reports": "https://github.com/IN-CORE/pyincore/issues",
+        "Source": "https://github.com/IN-CORE/pyincore",
     },
 )

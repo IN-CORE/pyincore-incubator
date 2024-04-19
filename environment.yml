@@ -1,0 +1,7 @@
+name: pyincore_incubator
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - scip>=8.0.0
+  - pyincore
