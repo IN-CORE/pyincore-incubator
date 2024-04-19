@@ -19,5 +19,5 @@ def run_with_base_class():
     example.run_analysis()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_with_base_class()
