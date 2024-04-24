@@ -1,14 +1,17 @@
-pyincore
+pyincore-incubator
 ========
 
-**pyIncore-incubator** is a component of IN-CORE. It is a python package
-consisting of new analyses that build on pyIncore, but are not yet part of the
-core analyses.
+**pyIncore-incubator** is a component of IN-CORE that allows users to extend
+the core set of analyses provided by pyincore. New analyses in
+pyincore-incubator extend the pyincore BaseAnalysis class and can be chained
+with existing pyincore analyses to add new functionality. The incubator gives
+the community around the IN-CORE project a forum and set of resources for
+innovation and investigation of new ideas and alternative ideas.
 
 Installation with conda
 -----------------------
 
-Installing **pyincore** with Conda is officially supported by IN-CORE development team. 
+Installing **pyincore-incubator** with Conda is officially supported by IN-CORE development team.
 
 To add `conda-forge <https://conda-forge.org/>`__  channel to your environment, run
 
@@ -61,6 +64,9 @@ section at IN-CORE manual.
 
 Documentation
 -------------
+
+For reference, the documentation of pyincore can be found below since
+pyincore-incubator adds new analyses to the core set provided by pyincore.
 
 **pyIncore** documentation can be found at
 https://incore.ncsa.illinois.edu/doc/incore/pyincore.html
