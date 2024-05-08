@@ -12,10 +12,12 @@ about:
   home: https://incore.ncsa.illinois.edu
   license: MPL-2.0
   summary: 'Python library for IN-CORE (Interdependent Networked Community Resilience Modeling Environment)'
-  description: 'pyIncore is a component of IN-CORE. It is a python package consisting of two primary components: 
-  1) a set of service classes to interact with the IN-CORE web services, and 2) IN-CORE analyses. The pyIncore 
-  package allows users to apply various hazards to infrastructure in selected areas, propagating the effect of 
-  physical infrastructure damage and loss of functionality to social and economic impacts.'
+  description: 'pyIncore-incubator is a component of IN-CORE that allows users to extend
+  the core set of analyses provided by pyIncore. New analyses in pyincore-incubator
+  extend the pyincore BaseAnalysis class and can be chained with existing pyincore
+  analyses to add new functionality. The incubator gives the community around the
+  IN-CORE project a forum and set of resources for innovation and investigation of new
+  ideas and alternative ideas.'
   dev_url: https://github.com/IN-CORE/pyincore-incubator
   doc_url: https://incore.ncsa.illinois.edu/doc/incore
 

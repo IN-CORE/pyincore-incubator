@@ -4,12 +4,12 @@
 
 ### Installation
 
-Clone the code from pyincore repository [git](https://github.com/IN-CORE/pyincore-incubator.git) 
+Clone the code from pyincore-incubator repository [git](https://github.com/IN-CORE/pyincore-incubator.git)
 repository.
 
 ### Building and running Sphinx in Docker container
 
-Install [Docker Desktop](https://www.docker.com/) for your OS and change directory to your local branch `pyincore_viz` folder (one with Dockerfile).
+Install [Docker Desktop](https://www.docker.com/) for your OS and change directory to your local branch `pyincore_incubator` folder (one with Dockerfile).
 
 1. Build container
     ```
