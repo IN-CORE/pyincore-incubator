@@ -56,7 +56,7 @@ setup(
         ]
     },
     project_urls={
-        "Bug Reports": "https://github.com/IN-CORE/pyincore/issues",
-        "Source": "https://github.com/IN-CORE/pyincore",
+        "Bug Reports": "https://github.com/IN-CORE/pyincore-incubator/issues",
+        "Source": "https://github.com/IN-CORE/pyincore-incubator",
     },
 )
