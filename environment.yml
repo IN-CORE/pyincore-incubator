@@ -1,5 +1,6 @@
 name: pyincore_incubator
 channels:
+  - in-core
   - conda-forge
   - defaults
 dependencies:
