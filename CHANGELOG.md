@@ -7,3 +7,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+- New cohort building damage analysis and test [#4](https://github.com/IN-CORE/pyincore-incubator/issues/4)
