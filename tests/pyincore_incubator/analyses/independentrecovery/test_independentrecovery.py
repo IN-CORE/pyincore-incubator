@@ -1,5 +1,5 @@
 from pyincore import IncoreClient, RepairService, MappingSet, Dataset, DataService
-from pyincore.analyses.independentrecovery.independentrecovery import IndependentRecovery
+from pyincore_incubator.analyses.independentrecovery import IndependentRecovery
 
 
 def run_with_base_class():
