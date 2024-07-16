@@ -10,7 +10,8 @@ from itertools import repeat
 
 from pyincore import AnalysisUtil, GeoUtil
 from pyincore import BaseAnalysis, HazardService, FragilityService
-from pyincore.analyses.bridgedamage.bridgeutil import BridgeUtil
+
+# from pyincore.analyses.bridgedamage.bridgeutil import BridgeUtil
 from pyincore.models.dfr3curve import DFR3Curve
 
 
@@ -29,9 +30,9 @@ class PortComponentDamage(BaseAnalysis):
         super(PortComponentDamage, self).__init__(incore_client)
 
     def run(self):
-        """Executes bridge damage analysis."""
-        # Bridge dataset
-        crane_set = self.get_input_dataset("cranes").get_inventory_reader()
+        """Executes port component damage analysis."""
+        # component dataset
+        component_set = self.get_input_dataset("components").get_inventory_reader()
 
         # get input hazard
         hazard, hazard_type, hazard_dataset_id = (
@@ -47,19 +48,19 @@ class PortComponentDamage(BaseAnalysis):
             user_defined_cpu = self.get_parameter("num_cpu")
 
         num_workers = AnalysisUtil.determine_parallelism_locally(
-            self, len(crane_set), user_defined_cpu
+            self, len(component_set), user_defined_cpu
         )
 
-        avg_bulk_input_size = int(len(crane_set) / num_workers)
+        avg_bulk_input_size = int(len(component_set) / num_workers)
         inventory_args = []
         count = 0
-        inventory_list = list(crane_set)
+        inventory_list = list(component_set)
         while count < len(inventory_list):
             inventory_args.append(inventory_list[count : count + avg_bulk_input_size])
             count += avg_bulk_input_size
 
-        (ds_results, damage_results) = self.bridge_damage_concurrent_future(
-            self.bridge_damage_analysis_bulk_input,
+        (ds_results, damage_results) = self.port_component_damage_concurrent_future(
+            self.port_component_damage_analysis_bulk_input,
             num_workers,
             inventory_args,
             repeat(hazard),
@@ -89,7 +90,7 @@ class PortComponentDamage(BaseAnalysis):
             *args: All the arguments in order to pass into parameter function_name.
 
         Returns:
-            list: A list of ordered dictionaries with bridge damage values and other data/metadata.
+            list: A list of ordered dictionaries with component damage values and other data/metadata.
 
         """
         output_ds = []
@@ -103,100 +104,62 @@ class PortComponentDamage(BaseAnalysis):
 
         return output_ds, output_dmg
 
-    def bridge_damage_analysis_bulk_input(
-        self, crane, hazard, hazard_type, hazard_dataset_id
+    def port_component_damage_analysis_bulk_input(
+        self, components, hazard, hazard_type, hazard_dataset_id
     ):
-        """Run analysis for multiple cranes.
+        """Run analysis for multiple components.
 
         Args:
-            cranes (list): Multiple cranes from input inventory set.
+            components (list): Multiple components from input inventory set.
             hazard (obj): Hazard object.
             hazard_type (str): Type of hazard.
             hazard_dataset_id (str): ID of hazard.
 
         Returns:
-            list: A list of ordered dictionaries with bridge damage values and other data/metadata.
+            list: A list of ordered dictionaries with component damage values and other data/metadata.
 
         """
 
         # Get Fragility key
         fragility_key = self.get_parameter("fragility_key")
-        if fragility_key is None:
-            fragility_key = (
-                BridgeUtil.DEFAULT_TSUNAMI_HMAX_FRAGILITY_KEY
-                if hazard_type == "tsunami"
-                else BridgeUtil.DEFAULT_FRAGILITY_KEY
-            )
-            self.set_parameter("fragility_key", fragility_key)
 
-        # Hazard Uncertainty
-        use_hazard_uncertainty = False
-        if (
-            hazard_type == "earthquake"
-            and self.get_parameter("use_hazard_uncertainty") is not None
-        ):
-            use_hazard_uncertainty = self.get_parameter("use_hazard_uncertainty")
-
-        # Liquefaction
-        # use_liquefaction = False
-        # if (
-        #     hazard_type == "earthquake"
-        #     and self.get_parameter("use_liquefaction") is not None
-        # ):
-        #     use_liquefaction = self.get_parameter("use_liquefaction")
-
-        # # Get geology dataset id containing liquefaction susceptibility
-        # geology_dataset_id = self.get_parameter("liquefaction_geology_dataset_id")
-
-        # fragility_set = self.fragilitysvc.match_inventory(
-        #     self.get_input_dataset("dfr3_mapping_set"), cranes, fragility_key
-        # )
+        fragility_set = self.fragilitysvc.match_inventory(
+            self.get_input_dataset("dfr3_mapping_set"), components, fragility_key
+        )
 
         values_payload = []
-        values_payload_liq = []  # for liquefaction, if used
-        unmapped_bridges = []
-        mapped_bridges = []
-        for b in cranes:
-            bridge_id = b["id"]
-            if bridge_id in fragility_set:
-                location = GeoUtil.get_location(b)
+        unmapped_components = []
+        mapped_components = []
+        for c in components:
+            component_id = c["id"]
+            if component_id in fragility_set:
+                location = GeoUtil.get_location(c)
                 loc = str(location.y) + "," + str(location.x)
 
-                demands = fragility_set[bridge_id].demand_types
-                units = fragility_set[bridge_id].demand_units
+                demands = fragility_set[component_id].demand_types
+                units = fragility_set[component_id].demand_units
                 value = {"demands": demands, "units": units, "loc": loc}
                 values_payload.append(value)
-                mapped_bridges.append(b)
-
-                if use_liquefaction and geology_dataset_id is not None:
-                    value_liq = {"demands": [""], "units": [""], "loc": loc}
-                    values_payload_liq.append(value_liq)
+                mapped_components.append(c)
 
             else:
-                unmapped_bridges.append(b)
+                unmapped_components.append(c)
 
         # not needed anymore as they are already split into mapped and unmapped
-        del cranes
+        del components
 
         hazard_vals = hazard.read_hazard_values(values_payload, self.hazardsvc)
-
-        # Check if liquefaction is applicable
-        # if use_liquefaction and geology_dataset_id is not None:
-        #     liquefaction_resp = self.hazardsvc.post_liquefaction_values(
-        #         hazard_dataset_id, geology_dataset_id, values_payload_liq
-        #     )
 
         ds_results = []
         damage_results = []
 
         i = 0
-        for bridge in mapped_bridges:
+        for component in mapped_components:
             ds_result = dict()
             damage_result = dict()
             dmg_probability = dict()
             dmg_intervals = dict()
-            # ground_failure_prob = None
-            selected_fragility_set = fragility_set[bridge["id"]]
+            selected_fragility_set = fragility_set[component["id"]]
 
             if isinstance(selected_fragility_set.fragility_curves[0], DFR3Curve):
                 # Supports multiple demand types in same fragility
@@ -215,19 +178,19 @@ class PortComponentDamage(BaseAnalysis):
                 if not AnalysisUtil.do_hazard_values_have_errors(
                     hazard_vals[i]["hazardValues"]
                 ):
-                    bridge_args = (
+                    component_args = (
                         selected_fragility_set.construct_expression_args_from_inventory(
-                            bridge
+                            component
                         )
                     )
                     dmg_probability = selected_fragility_set.calculate_limit_state(
-                        hval_dict, inventory_type="bridge", **bridge_args
-                    )
+                        hval_dict, inventory_type="portComponent", **component_args
+                    )  # TODO: check inventory type
 
                     dmg_intervals = selected_fragility_set.calculate_damage_interval(
                         dmg_probability,
                         hazard_type=hazard_type,
-                        inventory_type="bridge",
+                        inventory_type="portComponent",
                     )
             else:
                 raise ValueError(
@@ -235,14 +198,14 @@ class PortComponentDamage(BaseAnalysis):
                     "seeing this please report the issue."
                 )
 
-            ds_result["guid"] = bridge["properties"]["guid"]
+            ds_result["guid"] = component["properties"]["guid"]
             ds_result.update(dmg_probability)
             ds_result.update(dmg_intervals)
             ds_result["haz_expose"] = AnalysisUtil.get_exposure_from_hazard_values(
                 hazard_val, hazard_type
             )
 
-            damage_result["guid"] = bridge["properties"]["guid"]
+            damage_result["guid"] = component["properties"]["guid"]
             damage_result["fragility_id"] = selected_fragility_set.id
             # damage_result["retrofit"] = retrofit_type
             # damage_result["retrocost"] = retrofit_cost
@@ -250,53 +213,25 @@ class PortComponentDamage(BaseAnalysis):
             damage_result["demandunits"] = input_demand_units
             damage_result["hazardtype"] = hazard_type
             damage_result["hazardval"] = hazard_val
-            # if use_liquefaction and geology_dataset_id is not None:
-            #    damage_result[BridgeUtil.GROUND_FAILURE_PROB] = ground_failure_prob
-
-            # # add spans to bridge output so mean damage calculation can use that info
-            # if (
-            #     "spans" in bridge["properties"]
-            #     and bridge["properties"]["spans"] is not None
-            # ):
-            #     if (
-            #         isinstance(bridge["properties"]["spans"], str)
-            #         and bridge["properties"]["spans"].isdigit()
-            #     ):
-            #         damage_result["spans"] = int(bridge["properties"]["spans"])
-            #     elif isinstance(bridge["properties"]["spans"], int):
-            #         damage_result["spans"] = bridge["properties"]["spans"]
-            # elif (
-            #     "SPANS" in bridge["properties"]
-            #     and bridge["properties"]["SPANS"] is not None
-            # ):
-            #     if (
-            #         isinstance(bridge["properties"]["SPANS"], str)
-            #         and bridge["properties"]["SPANS"].isdigit()
-            #     ):
-            #         damage_result["SPANS"] = int(bridge["properties"]["SPANS"])
-            #     elif isinstance(bridge["properties"]["SPANS"], int):
-            #         damage_result["SPANS"] = bridge["properties"]["SPANS"]
-            # else:
-            #     damage_result["spans"] = 1
 
             ds_results.append(ds_result)
             damage_results.append(damage_result)
             i += 1
 
-        for bridge in unmapped_bridges:
+        for component in unmapped_components:
             ds_result = dict()
             damage_result = dict()
 
-            ds_result["guid"] = bridge["properties"]["guid"]
+            ds_result["guid"] = component["properties"]["guid"]
 
-            damage_result["guid"] = bridge["properties"]["guid"]
+            damage_result["guid"] = component["properties"]["guid"]
             damage_result["retrofit"] = None
             damage_result["retrocost"] = None
             damage_result["demandtypes"] = None
             damage_result["demandunits"] = None
             damage_result["hazardtype"] = None
             damage_result["hazardval"] = None
-            damage_result["spans"] = None
+            damage_result["spans"] = None  # TODO: check what's needed
 
             ds_results.append(ds_result)
             damage_results.append(damage_result)
@@ -307,17 +242,17 @@ class PortComponentDamage(BaseAnalysis):
         """Get specifications of the port component damage analysis.
 
         Returns:
-            obj: A JSON object of specifications of the bridge damage analysis.
+            obj: A JSON object of specifications of the component damage analysis.
 
         """
         return {
-            "name": "bridge-damage",
-            "description": "bridge damage analysis",
+            "name": "port-component-damage",
+            "description": "Port component damage analysis",
             "input_parameters": [
                 {
                     "id": "result_name",
                     "required": True,
-                    "description": "result dataset name",
+                    "description": "Result dataset name",
                     "type": str,
                 },
                 {
@@ -368,15 +303,15 @@ class PortComponentDamage(BaseAnalysis):
                     "id": "hazard",
                     "required": False,
                     "description": "Hazard object",
-                    "type": ["earthquake", "tornado", "hurricane", "flood", "tsunami"],
-                },
+                    "type": ["hurricane"],
+                },  # "earthquake", "tornado", "hurricane", "flood", "tsunami"
             ],
             "input_datasets": [
                 {
-                    "id": "cranes",
+                    "id": "components",
                     "required": True,
-                    "description": "Bridge Inventory",
-                    "type": ["ergo:cranes", "ergo:bridgesVer2", "ergo:bridgesVer3"],
+                    "description": "Port component inventory",
+                    "type": ["portComponents"],  # TODO: Check new type
                 },
                 {
                     "id": "dfr3_mapping_set",
@@ -388,16 +323,16 @@ class PortComponentDamage(BaseAnalysis):
             "output_datasets": [
                 {
                     "id": "result",
-                    "parent_type": "cranes",
-                    "description": "CSV file of bridge structural damage",
-                    "type": "ergo:bridgeDamageVer3",
+                    "parent_type": "components",
+                    "description": "CSV file of component structural damage",
+                    "type": "ergo:componentDamageVer3",  # TODO: Check new type
                 },
                 {
                     "id": "metadata",
-                    "parent_type": "cranes",
+                    "parent_type": "components",
                     "description": "additional metadata in json file about applied hazard value and "
                     "fragility",
-                    "type": "incore:bridgeDamageSupplement",
+                    "type": "incore:componentDamageSupplement",
                 },
             ],
         }
