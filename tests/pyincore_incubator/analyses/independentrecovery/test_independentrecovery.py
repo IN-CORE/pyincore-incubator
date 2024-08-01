@@ -9,12 +9,12 @@ def run_with_base_class():
 
     independent_recovery = IndependentRecovery(client)
 
-    building_damage = Dataset.from_file('Joplin_bldg_dmg_result.csv', "ncsa:buildingDamageVer4")
-    household_inventory = Dataset.from_file('hui_ver2-0-0_Joplin_MO_2010_rs1000.csv', "incore:housingUnitInventory")
-    household_allocation = Dataset.from_file('Joplin_hua_result_1238.csv', "incore:housingUnitAllocation")
-    household_dislocation = Dataset.from_file('pop-dislocation-results.csv', "incore:householdDislocation")
-    residential_recovery = Dataset.from_file('joplin_recovery_recovery.csv', "incore:buildingRecovery")
-    housing_recovery = Dataset.from_file('housing_recovery_result.csv', "incore:housingRecovery")
+    building_damage = Dataset.from_file('data/Joplin_bldg_dmg_result.csv', "ncsa:buildingDamageVer4")
+    household_inventory = Dataset.from_file('data/hui_ver2-0-0_Joplin_MO_2010_rs1000.csv', "incore:housingUnitInventory")
+    household_allocation = Dataset.from_file('data/Joplin_hua_result_1238.csv', "incore:housingUnitAllocation")
+    household_dislocation = Dataset.from_file('data/pop-dislocation-results.csv', "incore:householdDislocation")
+    residential_recovery = Dataset.from_file('data/joplin_recovery_sample10_recovery.csv', "incore:buildingRecovery")
+    housing_recovery = Dataset.from_file('data/housing_recovery_result.csv', "incore:housingRecovery")
 
     independent_recovery.set_input_dataset("building damage", building_damage)
     independent_recovery.set_input_dataset("household inventory", household_inventory)
