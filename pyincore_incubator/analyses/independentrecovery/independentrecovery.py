@@ -1,4 +1,4 @@
-# Copyright (c) 2019 University of Illinois and others. All rights reserved.
+# Copyright (c) 2024 University of Illinois and others. All rights reserved.
 #
 # This program and the accompanying materials are made available under the
 # terms of the Mozilla Public License v2.0 which accompanies this distribution,
@@ -6,13 +6,9 @@
 
 import numpy as np
 import pandas as pd
-from scipy.stats import lognorm
 import time
 
-import warnings
-
 from pyincore import BaseAnalysis
-from pyincore.analyses.buildingdamage.buildingutil import BuildingUtil
 
 
 class IndependentRecovery(BaseAnalysis):
