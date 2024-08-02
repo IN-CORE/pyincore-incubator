@@ -126,7 +126,9 @@ class IndependentRecovery(BaseAnalysis):
         household_dislocation = household_dislocation.loc[(household_dislocation['plcname10'] == 'Joplin') &
                                                           (household_dislocation['guid'].notnull()) &
                                                           (household_dislocation['huid'].notna())]
-        residential_recovery['bldgmean'] = round(residential_recovery.mean(axis=1), 2)
+
+        residential_recovery['bldgmean'] = round(residential_recovery.drop(columns=['guid']).mean(axis=1), 2)
+
         housing_unit_inv_df = pd.merge(left=household_inventory,
                                        right=household_dislocation[
                                            ['huid', 'guid', 'DS_0', 'DS_1', 'DS_2', 'DS_3', 'prdis', 'dislocated']],
@@ -168,8 +170,8 @@ class IndependentRecovery(BaseAnalysis):
         for j in range(0, len(merged_super)):
             rand = np.random.random()
             for i in range(0, 90):
-                if ((merged_super.iloc[j][-91:][i] == 4) and (4 * (i + 1) < merged_super.iloc[j][-91:][90])
-                        and rand > household_allocation['vacancy'].astype(bool).sum(axis=0) /
+                if ((merged_super.iloc[j, -91 + i] == 4) and (4 * (i + 1) < merged_super.iloc[j, -91 + 90])
+                    and rand > household_allocation['vacancy'].astype(bool).sum(axis=0) /
                         merged_super['ownershp'].count()):
                     merged_super.iloc[j, i + 4] = 3
 
@@ -193,10 +195,10 @@ class IndependentRecovery(BaseAnalysis):
         modified_housing_recovery.insert(0, 'hur', modified_housing_recovery.pop('hur'))
         for j in range(0, len(modified_housing_recovery)):
             for i in range(1, 90):
-                if modified_housing_recovery.iloc[j][-90:][i] == 4:
+                if modified_housing_recovery.iloc[j, -90 + i] == 4:
                     modified_housing_recovery['hur'][j] = i * 4
                     break
-                if modified_housing_recovery.iloc[j][-90:][i] == 5:
+                if modified_housing_recovery.iloc[j, -90 + i] == 5:
                     modified_housing_recovery['hur'][j] = 360
                     break
 
