@@ -4,5 +4,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - pygmm
   - scip>=8.0.0
   - pyincore

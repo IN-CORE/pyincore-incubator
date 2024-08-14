@@ -47,7 +47,7 @@ setup(
     include_package_data=True,
     package_data={"": ["*.ini"]},
     python_requires=">=3.9",
-    install_requires=["pyincore", "pre-commit"],
+    install_requires=["pyincore", "pre-commit", "pygmm"],
     extras_require={
         "test": [
             "pycodestyle>=2.6.0",
