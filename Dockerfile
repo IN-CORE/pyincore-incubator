@@ -7,12 +7,15 @@ USER root
 
 # install packages
 WORKDIR /src
-COPY environment.yml .
+COPY environment.yml requirements.txt .
 
 ENV PATH "$MAMBA_ROOT_PREFIX/bin:$PATH"
 RUN micromamba install -y -n base -c conda-forge -c in-core \
     sphinx sphinx_rtd_theme \
     -f environment.yml
+
+# Some libraries are only in pip (e.g. pygmm)
+RUN pip install -r requirements.txt
 
 # copy code and generate documentation
 COPY . ./
