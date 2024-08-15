@@ -68,9 +68,11 @@ class EarthquakeGenerator(BaseAnalysis):
         ) = self.generate_earthquake_objects(setup)
 
         return_period = self.get_parameter("return_period")
+        num_scenarios = self.get_parameter("num_scenarios")
+        ground_motion_type = self.get_parameter("ground_motion_type")
 
         seismic_hazard_visualization = SeismicHazardVisualization(
-            setup, intensity_measures_dict, return_period=return_period
+            setup, intensity_measures_dict, num_scenarios, return_period=return_period
         )
 
         exceedance_probability = self.get_parameter("exceedance_probability")
@@ -78,26 +80,31 @@ class EarthquakeGenerator(BaseAnalysis):
         if self.get_parameter("grid_resolution") is not None:
             grid_resolution = self.get_parameter("grid_resolution")
 
-        # TODO use self.get_parameter("result_name") to set the name of the output file
-        geotiff_file_path = "."
+        result_name = self.get_parameter("result_name")
+        output_file_name = f"{result_name}_Continuous_{ground_motion_type}.tif"
         seismic_hazard_visualization.generate_continuous_earthquake_geotiff(
             exceedance_probability=exceedance_probability,
+            ground_motion_type=ground_motion_type,
             grid_resolution=grid_resolution,
-            geotiff_file_path=geotiff_file_path,
+            geotiff_file_name=output_file_name,
         )
 
         self.set_output_dataset(
             "result",
             Dataset.from_file(
-                "continuous_intensity_measures.tif",
+                output_file_name,
                 data_type=self.output_datasets["result"]["spec"]["type"],
             ),
         )
 
+        # TODO demand units should be set by the ground motion type
         metadata = {}
         metadata["hazardType"] = "probabilistic"
-        metadata["demandType"] = self.get_parameter("ground_motion_type")
-        metadata["demandUnits"] = "g"
+        metadata["demandType"] = ground_motion_type
+        if ground_motion_type == "PGA" or ground_motion_type == "SA":
+            metadata["demandUnits"] = "g"
+        elif ground_motion_type == "PGV":
+            metadata["demandUnits"] = "cm/s"
 
         if self.get_parameter("period") is not None:
             metadata["period"] = self.get_parameter("period")
@@ -113,15 +120,34 @@ class EarthquakeGenerator(BaseAnalysis):
 
         return True
 
-    def generate_scenarios(self, setup):
+    def generate_scenarios(self, setup, num_scenarios):
         """
         Generates earthquake scenarios with associated magnitudes and sources.
+
+        Parameters:
+        -----------
+        num_scenarios : int
+            Number of earthquake scenarios to generate.
 
         Returns:
         --------
         tuple: A tuple containing arrays of magnitudes and corresponding source names.
         """
-        num_scenarios = self.get_parameter("num_scenarios")
+        # Generate magnitudes for each source within their specified range.
+        source_magnitudes = {
+            source_name: np.linspace(
+                setup.source_m_min[source_name],
+                setup.source_m_max[source_name],
+                num_scenarios,
+            )
+            for source_name in setup.source_data
+        }
+
+        # Flatten the source magnitudes into a single array
+        all_magnitudes = np.concatenate(
+            [source_magnitudes[source_name] for source_name in setup.source_data]
+        )
+
         magnitude_frequency_distribution_class = self.get_parameter(
             "magnitude_frequency_distribution"
         )
@@ -130,13 +156,10 @@ class EarthquakeGenerator(BaseAnalysis):
             MagnitudeFrequencyDistribution, magnitude_frequency_distribution_class
         )
 
-        # Generate linearly spaced magnitudes within the specified range.
-        magnitudes = np.linspace(setup.m_min_min, setup.m_max_max, num_scenarios)
-
         # Calculate the probability of each magnitude for each source.
         probabilities = {
             source_name: magnitude_frequency_distribution(
-                magnitudes,
+                source_magnitudes[source_name],
                 setup.source_m_min[source_name],
                 setup.source_m_max[source_name],
             )[0]
@@ -151,18 +174,27 @@ class EarthquakeGenerator(BaseAnalysis):
             ],
             axis=0,
         )
+
         # Normalize the probabilities to sum to 1.
         prob_of_magnitudes /= np.sum(prob_of_magnitudes)
 
+        # Expand probabilities to match the size of the concatenated magnitudes array
+        expanded_prob_of_magnitudes = np.tile(
+            prob_of_magnitudes, len(setup.source_data)
+        )
+
+        # Normalize the expanded probabilities to sum to 1.
+        expanded_prob_of_magnitudes /= np.sum(expanded_prob_of_magnitudes)
+
         # Select magnitudes based on the calculated probabilities.
-        selected_magnitudes = np.random.choice(
-            magnitudes, size=num_scenarios, p=prob_of_magnitudes
+        magnitudes = np.random.choice(
+            all_magnitudes, size=num_scenarios, p=expanded_prob_of_magnitudes
         )
 
         # Calculate the probability of each source given the selected magnitudes.
         prob_of_magnitudes_given_source = {
             source_name: magnitude_frequency_distribution(
-                selected_magnitudes,
+                magnitudes,
                 setup.source_m_min[source_name],
                 setup.source_m_max[source_name],
             )[0]
@@ -191,9 +223,11 @@ class EarthquakeGenerator(BaseAnalysis):
             for prob in prob_of_sources_given_magnitude
         ]
 
-        return selected_magnitudes, sources
+        return magnitudes, sources
 
-    def calculate_ground_motion_parameters(self, setup, magnitudes, sources):
+    def calculate_ground_motion_parameters(
+        self, setup, ground_motion_type, magnitudes, sources
+    ):
         """
         Calculates the median ground motion parameters and the associated standard deviations.
 
@@ -219,16 +253,16 @@ class EarthquakeGenerator(BaseAnalysis):
         ground_motion_equation_model = self.get_parameter(
             "ground_motion_equation_model"
         )
-        ground_motion_type = self.get_parameter("ground_motion_type")
 
         for i, magnitude in enumerate(magnitudes):
             source_info = setup.source_data[sources[i]]
-            source_loc = (source_info["lat"], source_info["lon"], source_info["depth"])
+            source_loc = (source_info["lon"], source_info["lat"], source_info["depth"])
+            # source_loc = (source_info["lat"], source_info["lon"], source_info["depth"])
 
             for j, site_id in enumerate(setup.site_id):
                 site_loc = (
-                    setup.site_lat[j],
                     setup.site_lon[j],
+                    setup.site_lat[j],
                     setup.site_depth[j],
                 )
 
@@ -246,6 +280,11 @@ class EarthquakeGenerator(BaseAnalysis):
                     )
                 )
 
+                # print("distances")
+                # print(rupture_distance)
+                # print(joyner_boore_distance)
+                # print(horizontal_distance)
+
                 model_class = getattr(pygmm, ground_motion_equation_model)
                 gm_index = _get_gm_indices(model_class, ground_motion_type)
 
@@ -262,29 +301,20 @@ class EarthquakeGenerator(BaseAnalysis):
                 )
                 model = model_class(scenario)
 
-                if ground_motion_type == "PGA":
-                    median_ground_motion[site_id, i] = model.pga
-                elif ground_motion_type == "PGV":
-                    median_ground_motion[site_id, i] = model.pgv
-                elif ground_motion_type == "SA":
-                    median_ground_motion[site_id, i] = model.spec_accels
-                else:
-                    raise ValueError(
-                        "Invalid ground motion type. Choose 'PGA', 'PGV', or 'SA'."
-                    )
+                resp_ref = np.exp(model._calc_ln_resp(model.V_REF, np.nan))
+                ln_std, tau, phi = model._calc_ln_std(resp_ref)
 
-                intra_event_std[site_id, i] = model._calc_ln_std()[2][gm_index]
-                inter_event_std[site_id, i] = model._calc_ln_std()[1][gm_index]
-
-                # v_ref     = 1180 # Consider refernce velocity as 1180 m/s
-                # resp_ref  = np.exp(model._calc_ln_resp(v_ref, np.nan))
-
-                # intra_event_std[site_id, i] = model._calc_ln_std(resp_ref)[2][gm_index]
-                # inter_event_std[site_id, i] = model._calc_ln_std(resp_ref)[1][gm_index]
+                median_ground_motion[site_id, i] = np.exp(
+                    model._calc_ln_resp(scenario.v_s30, resp_ref)[gm_index]
+                )
+                inter_event_std[site_id, i] = tau[gm_index]
+                intra_event_std[site_id, i] = phi[gm_index]
 
         return median_ground_motion, intra_event_std, inter_event_std
 
-    def generate_norm_inter_event_residuals(self, setup, inter_event_std):
+    def generate_norm_inter_event_residuals(
+        self, setup, num_scenarios, inter_event_std
+    ):
         """
         Generates a set of normalized inter-event residuals for each scenario.
 
@@ -298,21 +328,22 @@ class EarthquakeGenerator(BaseAnalysis):
         dict: A dictionary with (site_id, scenario_index) as keys and normalized inter-event residuals as values.
         """
 
-        num_scenarios = self.get_parameter("num_scenarios")
         norm_inter_event_residuals = {}
         # Generate normalized inter-event residuals for each scenario.
         for i in range(num_scenarios):
             Eta = np.random.normal(0, 1)
-            # Base standard deviation for normalization
-            base_inter_event_std = inter_event_std[setup.site_id[0], i]
             for j, site_id in enumerate(setup.site_id):
+                # Base standard deviation for normalization
+                base_inter_event_std = inter_event_std[setup.site_id[0], i]
                 norm_inter_event_residuals[site_id, i] = (
                     base_inter_event_std / inter_event_std[site_id, i]
                 ) * Eta
 
         return norm_inter_event_residuals
 
-    def generate_norm_intra_event_residuals(self, setup):
+    def generate_norm_intra_event_residuals(
+        self, setup, num_scenarios, ground_motion_type, sources, period=None
+    ):
         """
         Generates a set of intra-event residuals using a spatial correlation model.
 
@@ -322,53 +353,67 @@ class EarthquakeGenerator(BaseAnalysis):
         """
 
         def determine_range_parameter_by_ground_motion_type(
-            vs30, ground_motion_type, period
+            vs30, ground_motion_type, period=None
         ):
             """
-            Determine the range parameter (range_param) for the correlation model given Vs30 values,
+            Determine the range parameter (b) for the correlation model given Vs30 values,
             the ground motion type (PGA, PGV, or SA), and period if applicable.
 
             Parameters:
-            vs30 (pd.Series): A Pandas series containing Vs30 values at different locations.
-            ground_motion_type (str): Type of ground motion ('PGA', 'PGV', or 'SA').
-            period (float, optional): The period of interest in seconds for 'SA'.
+            -----------
+            vs30 : (pd.Series)
+                A Pandas series containing Vs30 values at different locations.
+            ground_motion_type : str
+                Type of ground motion to analyze ('PGA', 'PGV', or 'SA').
+            period : float, optional
+                The period of interest in seconds for spectral acceleration (SA).
 
             Returns:
-            float: The range parameter range_param for the correlation model.
+            --------
+            float: The range parameter b for the correlation model.
             """
-            std_vs30 = vs30.std()
+            if isinstance(vs30, (list, np.ndarray, pd.Series)) and len(vs30) > 1:
+                std_vs30 = np.std(vs30)
+            else:
+                std_vs30 = 0
+
             clustering_threshold = 50
 
-            if ground_motion_type == "PGA" or ground_motion_type == "SA":
-                if period is None and ground_motion_type == "SA":
+            if ground_motion_type == "PGA":
+                period = 0
+                case = 1 if std_vs30 > clustering_threshold else 2
+
+                if case == 1:
+                    b = 8.5 + 17.2 * period
+                else:
+                    b = 40.7 - 15.0 * period
+
+            elif ground_motion_type == "PGV":
+                period = 1
+                b = 25.7
+
+            elif ground_motion_type == "SA":
+                if period is None:
                     raise ValueError(
                         "Period must be provided for Spectral Acceleration (SA)."
                     )
-                period = 0 if ground_motion_type == "PGA" else period
 
                 case = 1 if std_vs30 > clustering_threshold else 2
 
                 if period < 1:
                     if case == 1:
-                        range_param = 8.5 + 17.2 * period
+                        b = 8.5 + 17.2 * period
                     else:
-                        range_param = 40.7 - 15.0 * period
+                        b = 40.7 - 15.0 * period
                 else:
-                    range_param = 22.0 + 3.7 * period
-
-            elif ground_motion_type == "PGV":
-                range_param = 83.4
+                    b = 22.0 + 3.7 * period
 
             else:
                 raise ValueError(
                     "Invalid ground motion type. Choose 'PGA', 'PGV', or 'SA'."
                 )
+            return b
 
-            return range_param
-
-        num_scenarios = self.get_parameter("num_scenarios")
-        ground_motion_type = self.get_parameter("ground_motion_type")
-        period = self.get_parameter("period")
         # Range parameter b based on ground motion type.
         b = determine_range_parameter_by_ground_motion_type(
             setup.site_vs30, ground_motion_type, period
@@ -377,23 +422,23 @@ class EarthquakeGenerator(BaseAnalysis):
         # Coordinate matrix for sites.
         coords = np.column_stack((setup.site_lat, setup.site_lon))
 
+        # Calculate the pairwise Haversine distance matrix for the current scenario's source location.
+        distances = pdist(
+            coords,
+            lambda u, v: SeismicDistanceCalculator.calculate_haversine_distance(
+                u[0], u[1], v[0], v[1]
+            ),
+        )
+
+        # Convert distance matrix to a square-form and calculate the correlation matrix.
+        corr_matrix = np.exp(-3 * squareform(distances) / b)
+
+        # Set the diagonal to 1 to ensure positive definiteness.
+        np.fill_diagonal(corr_matrix, 1)
+
         norm_intra_event_residuals = {}
         # Generate residuals for each scenario.
         for i in range(num_scenarios):
-            # Calculate the pairwise Haversine distance matrix for the current scenario's source location.
-            distances = pdist(
-                coords,
-                lambda u, v: SeismicDistanceCalculator.calculate_haversine_distance(
-                    u[0], u[1], v[0], v[1]
-                ),
-            )
-
-            # Convert distance matrix to a square-form and calculate the correlation matrix.
-            corr_matrix = np.exp(-3 * squareform(distances) / b)
-
-            # Set the diagonal to 1 to ensure positive definiteness.
-            np.fill_diagonal(corr_matrix, 1)
-
             # Generate the intra-event residuals for this scenario using the correlation matrix.
             epsilon = np.random.multivariate_normal(
                 np.zeros(setup.num_sites), corr_matrix
@@ -401,7 +446,7 @@ class EarthquakeGenerator(BaseAnalysis):
 
             # Assign residuals to each site for the current scenario.
             for j, site_id in enumerate(setup.site_id):
-                norm_intra_event_residuals[site_id, i] = epsilon[j]
+                norm_intra_event_residuals[(site_id, i)] = epsilon[j]
 
         return norm_intra_event_residuals
 
@@ -413,28 +458,49 @@ class EarthquakeGenerator(BaseAnalysis):
         --------
         dict: A dictionary with tuples of (site_id, scenario_index) as keys and intensity measure values as values.
         """
-        magnitudes, sources = self.generate_scenarios(setup)
+        num_scenarios = self.get_parameter("num_scenarios")
+        ground_motion_type = self.get_parameter("ground_motion_type")
+        magnitudes, sources = self.generate_scenarios(setup, num_scenarios)
+        period = self.get_parameter("period")
+
+        intensity_measure_dict = {}
+        intensity_measure_data = []
+        combined_data = {}
+
         (
             median_ground_motion,
             intra_event_std,
             inter_event_std,
-        ) = self.calculate_ground_motion_parameters(setup, magnitudes, sources)
-        norm_inter_event_residual = self.generate_norm_inter_event_residuals(
-            setup, inter_event_std
+        ) = self.calculate_ground_motion_parameters(
+            setup, ground_motion_type, magnitudes, sources
         )
-        norm_intra_event_residual = self.generate_norm_intra_event_residuals(setup)
+        norm_inter_event_residual = self.generate_norm_inter_event_residuals(
+            setup, num_scenarios, inter_event_std
+        )
+        norm_intra_event_residual = self.generate_norm_intra_event_residuals(
+            setup, num_scenarios, ground_motion_type, sources, period
+        )
 
-        intensity_measure_dict = {}
-        intensity_measure_data = []
         for i, magnitude in enumerate(magnitudes):
             source_info = setup.source_data[sources[i]]
+            # source_loc = (
+            #     source_info["lon"],
+            #     source_info["lat"],
+            #     source_info["depth"],
+            # )
+            source_id = sources[i]
             for j, site_id in enumerate(setup.site_id):
-                im_value = np.exp(
+                # site_loc = (
+                #     setup.site_lon[j],
+                #     setup.site_lat[j],
+                #     setup.site_depth[j],
+                # )
+                ln_im_value = (
                     np.log(median_ground_motion[site_id, i])
-                    + intra_event_std[site_id, i]
-                    * norm_intra_event_residual[site_id, i]
                     + inter_event_std[site_id, i]
                     * norm_inter_event_residual[site_id, i]
+                    + intra_event_std[site_id, i]
+                    * norm_intra_event_residual[site_id, i]
                 )
 
                 distance = SeismicDistanceCalculator.calculate_haversine_distance(
@@ -444,20 +510,36 @@ class EarthquakeGenerator(BaseAnalysis):
                     source_info["lon"],
                 )
 
-                intensity_measure_dict[(site_id, i, magnitude, distance)] = im_value
-                intensity_measure_data.append(
-                    [site_id, i, magnitude, distance, im_value]
-                )
+                key = (i, site_id, source_id, magnitude, distance)
+                if key not in combined_data:
+                    combined_data[key] = {}
+                combined_data[key][ground_motion_type] = np.exp(ln_im_value)
+
+        # Transform combined data into the final dictionary and DataFrame format
+        for key, values in combined_data.items():
+            scenario_index, site_id, source_id, magnitude, distance = key
+            intensity_measure_dict[key] = values
+            intensity_measure_data.append(
+                [
+                    scenario_index,
+                    site_id,
+                    source_id,
+                    magnitude,
+                    distance,
+                    values.get(ground_motion_type, None),
+                ]
+            )
 
         # Create a DataFrame from the intensity measures
         intensity_measure_df = pd.DataFrame(
             intensity_measure_data,
             columns=[
+                "scenario_index",
                 "site_id",
-                "scenarion_index",
+                "source_id",
                 "magnitude",
                 "distance",
-                "intensity_measure",
+                ground_motion_type,
             ],
         )
 
