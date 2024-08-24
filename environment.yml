@@ -4,5 +4,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - sphinx<8.0.0
   - scip>=8.0.0
   - pyincore
