@@ -10,8 +10,6 @@ from itertools import repeat
 
 from pyincore import AnalysisUtil, GeoUtil
 from pyincore import BaseAnalysis, HazardService, FragilityService
-
-# from pyincore.analyses.bridgedamage.bridgeutil import BridgeUtil
 from pyincore.models.dfr3curve import DFR3Curve
 
 
@@ -175,6 +173,7 @@ class PortComponentDamage(BaseAnalysis):
                     hval_dict[d] = hazard_val[j]
                     j += 1
 
+                # Check if fragilities are in deprecated format
                 if not AnalysisUtil.do_hazard_values_have_errors(
                     hazard_vals[i]["hazardValues"]
                 ):
@@ -225,13 +224,13 @@ class PortComponentDamage(BaseAnalysis):
             ds_result["guid"] = component["properties"]["guid"]
 
             damage_result["guid"] = component["properties"]["guid"]
-            damage_result["retrofit"] = None
-            damage_result["retrocost"] = None
+            # damage_result["retrofit"] = None
+            # damage_result["retrocost"] = None
             damage_result["demandtypes"] = None
             damage_result["demandunits"] = None
             damage_result["hazardtype"] = None
             damage_result["hazardval"] = None
-            damage_result["spans"] = None  # TODO: check what's needed
+            # damage_result["spans"] = None  # TODO: check what's needed
 
             ds_results.append(ds_result)
             damage_results.append(damage_result)
@@ -261,24 +260,24 @@ class PortComponentDamage(BaseAnalysis):
                     "description": "Fragility key to use in mapping dataset",
                     "type": str,
                 },
-                {
-                    "id": "use_liquefaction",
-                    "required": False,
-                    "description": "Use liquefaction",
-                    "type": bool,
-                },
-                {
-                    "id": "liquefaction_geology_dataset_id",
-                    "required": False,
-                    "description": "Geology dataset id",
-                    "type": str,
-                },
-                {
-                    "id": "use_hazard_uncertainty",
-                    "required": False,
-                    "description": "Use hazard uncertainty",
-                    "type": bool,
-                },
+                # {
+                #     "id": "use_liquefaction",
+                #     "required": False,
+                #     "description": "Use liquefaction",
+                #     "type": bool,
+                # },
+                # {
+                #     "id": "liquefaction_geology_dataset_id",
+                #     "required": False,
+                #     "description": "Geology dataset id",
+                #     "type": str,
+                # },
+                # {
+                #     "id": "use_hazard_uncertainty",
+                #     "required": False,
+                #     "description": "Use hazard uncertainty",
+                #     "type": bool,
+                # },
                 {
                     "id": "num_cpu",
                     "required": False,
@@ -325,14 +324,14 @@ class PortComponentDamage(BaseAnalysis):
                     "id": "result",
                     "parent_type": "components",
                     "description": "CSV file of component structural damage",
-                    "type": "ergo:componentDamageVer3",  # TODO: Check new type
+                    "type": "ergo:componentDamageVer3",  # TODO: Check type
                 },
                 {
                     "id": "metadata",
                     "parent_type": "components",
                     "description": "additional metadata in json file about applied hazard value and "
                     "fragility",
-                    "type": "incore:componentDamageSupplement",
+                    "type": "incore:componentDamageSupplement",  # TODO: Check type
                 },
             ],
         }
