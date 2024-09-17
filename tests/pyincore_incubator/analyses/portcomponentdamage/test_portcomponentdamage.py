@@ -1,29 +1,26 @@
 # %%
 from pyincore import IncoreClient
-
-# import pyincore_incubator
 from pyincore_incubator.analyses.portcomponentdamage import PortComponentDamage
-
-import pyincore.globals as pyglobals
 
 
 # %%
 def run_with_base_class():
-    client = IncoreClient(pyglobals.INCORE_API_DEV_URL, offline=True)
+    client = IncoreClient()
 
-    # Building dataset
-    bldg_dataset_id = "5a284f0bc7d30d13bc081a28"
+    # Component dataset
+    component_dataset_id = "65ebeb310db8d44edc1f45c8"
 
     example = PortComponentDamage(client)
 
-    example.load_remote_input_dataset("buildings", bldg_dataset_id)
+    example.load_remote_input_dataset("components", component_dataset_id)
 
-    result_name = "example_output"
-    example.set_parameter("result_name", result_name)
+    print(example)
 
+    # result_name = "example_output"
+    # example.set_parameter("result_name", result_name)
 
-#     # Run Analysis
-#     example.run_analysis()
+    # # Run Analysis
+    # example.run_analysis()
 
 
 if __name__ == "__main__":
