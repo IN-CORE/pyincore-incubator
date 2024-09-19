@@ -7,3 +7,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- Sphinx build error for python 3.9 [#13](https://github.com/IN-CORE/pyincore-incubator/issues/13)
+
