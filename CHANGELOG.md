@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Independent recovery analysis [#5](https://github.com/IN-CORE/pyincore-incubator/issues/5)
 
-- Independent recovery analysis [#5](https://github.com/IN-CORE/pyincore-incubator/tree/5-lisa-new-independent-recovery-analysis)
+### Fixed
+- Sphinx build error for python 3.9 [#13](https://github.com/IN-CORE/pyincore-incubator/issues/13)
 
