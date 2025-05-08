@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Independent recovery analysis [#5](https://github.com/IN-CORE/pyincore-incubator/issues/5)
+- GitHub action to check linting [#16](https://github.com/IN-CORE/pyincore-incubator/issues/16)
 
 ### Fixed
 - Sphinx build error for python 3.9 [#13](https://github.com/IN-CORE/pyincore-incubator/issues/13)
