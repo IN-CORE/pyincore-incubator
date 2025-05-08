@@ -4,4 +4,6 @@
 # and is available at https://www.mozilla.org/en-US/MPL/2.0/
 
 
-from pyincore_incubator.analyses.independentrecovery.independentrecovery import IndependentRecovery
+from pyincore_incubator.analyses.independentrecovery.independentrecovery import (
+    IndependentRecovery,
+)
