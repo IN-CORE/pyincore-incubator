@@ -288,7 +288,7 @@ class IndependentRecovery(BaseAnalysis):
                     "id": "building damage",
                     "required": True,
                     "description": "Building Damage Probability",
-                    "type": ["ncsa:buildingDamageVer4"],
+                    "type": ["ergo:buildingDamageVer4"],
                 },
                 {
                     "id": "household inventory",
