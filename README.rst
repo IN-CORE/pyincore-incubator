@@ -1,5 +1,5 @@
 pyincore-incubator
-========
+========================
 
 **pyIncore-incubator** is a component of IN-CORE that allows users to extend
 the core set of analyses provided by pyincore. New analyses in
