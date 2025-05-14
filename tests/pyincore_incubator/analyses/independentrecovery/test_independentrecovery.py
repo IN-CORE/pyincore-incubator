@@ -20,24 +20,28 @@ def run_with_base_class():
         "data/Joplin_hua_result_1238.csv", "incore:housingUnitAllocation"
     )
     household_dislocation = Dataset.from_file(
-        "data/pop-dislocation-results.csv", "incore:householdDislocation"
+        "data/pop-dislocation-results.csv", "incore:popDislocation"
     )
     residential_recovery = Dataset.from_file(
         "data/joplin_recovery_sample10_recovery.csv", "incore:buildingRecovery"
     )
     housing_recovery = Dataset.from_file(
-        "data/housing_recovery_result.csv", "incore:housingRecovery"
+        "data/housing_recovery_result.csv", "incore:housingRecoveryHistory"
     )
 
-    independent_recovery.set_input_dataset("building damage", building_damage)
-    independent_recovery.set_input_dataset("household inventory", household_inventory)
-    independent_recovery.set_input_dataset("household allocation", household_allocation)
+    independent_recovery.set_input_dataset("building_damage", building_damage)
     independent_recovery.set_input_dataset(
-        "household dislocation", household_dislocation
+        "housing_unit_inventory", household_inventory
     )
-    independent_recovery.set_input_dataset("residential recovery", residential_recovery)
     independent_recovery.set_input_dataset(
-        "household housing recovery", housing_recovery
+        "housing_unit_allocation", household_allocation
+    )
+    independent_recovery.set_input_dataset(
+        "population_dislocation", household_dislocation
+    )
+    independent_recovery.set_input_dataset("residential_recovery", residential_recovery)
+    independent_recovery.set_input_dataset(
+        "household_housing_recovery", housing_recovery
     )
 
     # Specify the result name

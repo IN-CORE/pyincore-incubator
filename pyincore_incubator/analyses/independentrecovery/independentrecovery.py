@@ -50,22 +50,22 @@ class IndependentRecovery(BaseAnalysis):
         result_name = self.get_parameter("result_name")
 
         building_damage = self.get_input_dataset(
-            "building damage"
+            "building_damage"
         ).get_dataframe_from_csv(low_memory=False)
         household_inventory = self.get_input_dataset(
-            "household inventory"
+            "housing_unit_inventory"
         ).get_dataframe_from_csv(low_memory=False)
         household_allocation = self.get_input_dataset(
-            "household allocation"
+            "housing_unit_allocation"
         ).get_dataframe_from_csv(low_memory=False)
         household_dislocation = self.get_input_dataset(
-            "household dislocation"
+            "population_dislocation"
         ).get_dataframe_from_csv(low_memory=False)
         residential_recovery = self.get_input_dataset(
-            "residential recovery"
+            "residential_recovery"
         ).get_dataframe_from_csv(low_memory=False)
         housing_recovery = self.get_input_dataset(
-            "household housing recovery"
+            "household_housing_recovery"
         ).get_dataframe_from_csv(low_memory=False)
 
         # Returns dataframe
@@ -77,9 +77,7 @@ class IndependentRecovery(BaseAnalysis):
             residential_recovery,
             housing_recovery,
         )
-        self.set_result_csv_data(
-            "housing recovery", recovery_results, result_name, "dataframe"
-        )
+        self.set_result_csv_data("result", recovery_results, result_name, "dataframe")
 
         return True
 
@@ -285,45 +283,45 @@ class IndependentRecovery(BaseAnalysis):
             ],
             "input_datasets": [
                 {
-                    "id": "building damage",
+                    "id": "building_damage",
                     "required": True,
                     "description": "Building Damage Probability",
                     "type": ["ergo:buildingDamageVer4"],
                 },
                 {
-                    "id": "household inventory",
+                    "id": "housing_unit_inventory",
                     "required": True,
-                    "description": "Household Inventory",
+                    "description": "Dataset containing detailed characteristics of the housing units.",
                     "type": ["incore:housingUnitInventory"],
                 },
                 {
-                    "id": "household allocation",
+                    "id": "housing_unit_allocation",
                     "required": True,
-                    "description": "Household Allocation",
+                    "description": "Dataset containing the housing unit allocation.",
                     "type": ["incore:housingUnitAllocation"],
                 },
                 {
-                    "id": "household dislocation",
+                    "id": "population_dislocation",
                     "required": True,
-                    "description": "Household Dislocation",
-                    "type": ["incore:householdDislocation"],
+                    "description": "Population dislocation.",
+                    "type": ["incore:popDislocation"],
                 },
                 {
-                    "id": "residential recovery",
+                    "id": "residential_recovery",
                     "required": True,
                     "description": "Residential Building Recovery",
                     "type": ["incore:buildingRecovery"],
                 },
                 {
-                    "id": "household housing recovery",
+                    "id": "household_housing_recovery",
                     "required": True,
                     "description": "Household Housing Recovery",
-                    "type": ["incore:housingRecovery"],
+                    "type": ["incore:housingRecoveryHistory"],
                 },
             ],
             "output_datasets": [
                 {
-                    "id": "housing recovery",
+                    "id": "result",
                     "description": "CSV file of household housing recovery considering the availability of their"
                     " residential buildings and housing vacancies",
                     "type": "incore:housingRecovery",
