@@ -8,7 +8,7 @@ import numpy as np
 from shapely.geometry import LineString, Point
 from scipy.spatial import cKDTree
 from collections import deque, defaultdict, OrderedDict
-from joblib import Parallel, delayed
+import concurrent.futures
 import warnings
 from pyincore import BaseAnalysis
 
@@ -498,20 +498,53 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
 
         return failure_dict
 
+    def process_sample(self, sample_df, node_importance_list, failure_link_dict, time_step):
+        """Process a single sample dataframe.
+        
+        Args:
+            sample_df (DataFrame): DataFrame with node_id and sample_failure columns.
+            node_importance_list (list): List of node IDs in order of importance.
+            failure_link_dict (dict): Dictionary mapping node failures to linked nodes.
+            time_step (int): Time step for recovery analysis.
+            
+        Returns:
+            Series: Power back time series for this sample.
+        """
+        sample_dict = sample_df.set_index('node_id').to_dict()['sample_failure']
+        power_final_result_gdf = self.get_building_power_back_time(
+            node_failure_dict=sample_dict,
+            node_importance_list=node_importance_list,
+            failure_link_dict=failure_link_dict,
+            time_step=time_step)
+        return power_final_result_gdf["power_back_time"].astype(float)
+    
     def run_monte_carlo_analysis(self, sample_dfs, node_importance_list, failure_link_dict, time_step, building_gdf,
                                  num_workers):
-        def process_sample(sample_df):
-            sample_dict = sample_df.set_index('node_id').to_dict()['sample_failure']
-            power_final_result_gdf = self.get_building_power_back_time(
-                node_failure_dict=sample_dict,
-                node_importance_list=node_importance_list,
-                failure_link_dict=failure_link_dict,
-                time_step=time_step)
-            return power_final_result_gdf["power_back_time"].astype(float)
-
-        # Run the analysis in parallel
-        power_back_time_results = Parallel(n_jobs=num_workers)(
-            delayed(process_sample)(sample_df) for sample_df in sample_dfs)
+        """Run Monte Carlo analysis using concurrent.futures for parallelization.
+        
+        Args:
+            sample_dfs (list): List of sample dataframes to process.
+            node_importance_list (list): List of node IDs in order of importance.
+            failure_link_dict (dict): Dictionary mapping node failures to linked nodes.
+            time_step (int): Time step for recovery analysis.
+            building_gdf (GeoDataFrame): GeoDataFrame with building data.
+            num_workers (int): Number of worker processes to use.
+            
+        Returns:
+            tuple: A tuple containing (power_final_result_gdf, power_final_result_samples).
+        """
+        # Run the analysis in parallel using concurrent.futures
+        power_back_time_results = []
+        
+        # Create a list of arguments for each sample
+        sample_args = [(sample_df, node_importance_list, failure_link_dict, time_step) for sample_df in sample_dfs]
+        
+        # Process samples in parallel
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+            # Map each sample to the process_sample function with fixed arguments
+            futures = [executor.submit(self.process_sample, *args) for args in sample_args]
+            # Collect results
+            power_back_time_results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
         # Compute the average power back time
         average_power_back_time = np.mean(power_back_time_results, axis=0)
@@ -520,20 +553,10 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         power_final_result_gdf = building_gdf.copy()
         power_final_result_gdf["average_power_back_time"] = average_power_back_time
 
-        # # Save the final GeoDataFrame as a shapefile and a CSV file
-        # power_final_result_gdf[['geometry', 'guid', 'average_power_back_time']].to_file(
-        #     f"power_final_result_{len(sample_dfs)}_samples.shp")
-        #
-        # power_final_result_gdf.drop("geometry", axis=1).to_csv(
-        #     f"power_final_result_{len(sample_dfs)}_samples.csv", index=False)
-
         # Create a DataFrame with all samples
         power_final_result_samples = building_gdf[["guid", "geometry"]].copy()
         for i, sample in enumerate(power_back_time_results):
             power_final_result_samples[f"sample_{i + 1}"] = sample
-
-        # power_final_result_samples.drop("geometry", axis=1).to_csv(
-        #     f"power_final_result_all_samples.csv", index=False)
 
         return power_final_result_gdf, power_final_result_samples
 
