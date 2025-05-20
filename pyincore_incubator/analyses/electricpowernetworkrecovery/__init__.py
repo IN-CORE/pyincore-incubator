@@ -4,4 +4,6 @@
 # terms of the Mozilla Public License v2.0 which accompanies this distribution,
 # and is available at https://www.mozilla.org/en-US/MPL/2.0/
 
-from pyincore_incubator.analyses.electricpowernetworkrecovery.electricpowernetworkrecovery import ElectricPowerNetworkRecovery
+from pyincore_incubator.analyses.electricpowernetworkrecovery.electricpowernetworkrecovery import (
+    ElectricPowerNetworkRecovery,
+)
