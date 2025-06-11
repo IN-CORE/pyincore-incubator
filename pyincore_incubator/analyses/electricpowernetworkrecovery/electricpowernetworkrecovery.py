@@ -5,9 +5,9 @@ import networkx as nx
 import pandas as pd
 import geopandas as gpd
 import numpy as np
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString
 from scipy.spatial import cKDTree
-from collections import deque, defaultdict, OrderedDict
+from collections import deque, OrderedDict
 import concurrent.futures
 import warnings
 from pyincore import BaseAnalysis
@@ -27,8 +27,23 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
 
     def run(self):
         """Executes power network analysis."""
-        self.sample_num = self.get_parameter("num_samples")
-        self.num_crew = self.get_parameter("num_crews")
+        # Set default values first
+        self.sample_num = 10
+        self.num_crew = 20
+
+        # Override with user-defined values if provided and valid
+        if (
+            not self.get_parameter("num_samples") is None
+            and self.get_parameter("num_samples") > 0
+        ):
+            self.sample_num = self.get_parameter("num_samples")
+
+        if (
+            not self.get_parameter("num_crews") is None
+            and self.get_parameter("num_crews") > 0
+        ):
+            self.num_crew = self.get_parameter("num_crews")
+
         node_data = self.get_input_dataset("nodes").get_dataframe_from_shapefile()
         edge_data = self.get_input_dataset("edges").get_dataframe_from_shapefile()
         building_data = self.get_input_dataset(
@@ -40,14 +55,29 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
 
         self.create_graph(node_data=node_data, edge_data=edge_data)
 
+        # Handle optional parameters for recovery_analysis with default values
+        num_thread_param = 8
+        if (
+            not self.get_parameter("num_thread") is None
+            and self.get_parameter("num_thread") > 0
+        ):
+            num_thread_param = self.get_parameter("num_thread")
+
+        time_step_param = 7
+        if (
+            not self.get_parameter("time_step") is None
+            and self.get_parameter("time_step") > 0
+        ):
+            time_step_param = self.get_parameter("time_step")
+
         (
             power_final_result_average,
             power_final_result_all_samples,
         ) = self.recovery_analysis(
             building_shapefile=building_data,
             pole_damage_mcs_samples_df=pole_damage_mcs_samples_df,
-            num_thread=self.get_parameter("num_thread"),
-            time_step=self.get_parameter("time_step"),
+            num_thread=num_thread_param,
+            time_step=time_step_param,
             consider_protective_devices=self.get_parameter(
                 "consider_protective_devices"
             ),
@@ -94,25 +124,25 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
                 },
                 {
                     "id": "num_thread",
-                    "required": True,
+                    "required": False,
                     "description": "Number of threads to use",
                     "type": int,
                 },
                 {
                     "id": "num_samples",
-                    "required": True,
+                    "required": False,
                     "description": "Number of samples to run",
                     "type": int,
                 },
                 {
                     "id": "num_crews",
-                    "required": True,
+                    "required": False,
                     "description": "Number of crews for power pole restoration",
                     "type": int,
                 },
                 {
                     "id": "time_step",
-                    "required": True,
+                    "required": False,
                     "description": "Time step for recovery analysis",
                     "type": int,
                 },
@@ -292,13 +322,6 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
             j = num_crew
 
             for i in range(int(np.ceil(pr.size / num_crew))):
-                # Define an empty numpy array to store the lengths of the matched roads
-                lengths_temp = np.array([])
-
-                start_index = i * num_crew
-                end_index = (i + 1) * num_crew
-                indices = pr[start_index:end_index]
-
                 # evaluate the repair time
                 t_repair[i + 1, :j] = np.sort(
                     (
@@ -317,13 +340,8 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
             Output1 = pr.reshape((-1, 1))
             Output2 = t_repair2[: Output1.size]
             ind = np.argsort(Output2, axis=0).ravel()
-            Output11 = Output1[ind]
             Output22 = Output2[ind]
-            Output222 = np.concatenate(
-                [Output22[:1], Output22[1:] - Output22[:-1]], axis=0
-            )
-            Output = np.concatenate([Output11, Output222, Output22], axis=1)
-            return Output22  # original function: Output
+            return Output22
 
     # Function to check if a node is connected to a substation
     def is_connected_to_substation(self, graph, node):
@@ -375,7 +393,7 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
 
         return prioritized_nodes, node_importance_array
 
-    def restore_nodes_and_update_power(
+    def restore_nodes_and_update_power(  # noqa: C901
         self,
         G_temp,
         prioritized_nodes,
@@ -464,7 +482,6 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
             nearest_node = row["nearest_node"]
             if nearest_node is not None:
                 node_id, node_attrs = nearest_node
-                attrs_hashable = frozenset(node_attrs.items())
                 power_back_time = G_temp.nodes[node_id]["power_back_time"]
                 self.building_gdf.at[idx, "power_back_time"] = power_back_time
 
@@ -479,9 +496,6 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         failure_link_dict=None,
         time_step=14,
     ):
-        # set the initial time
-        time_day = 0
-
         # create a new networkx graph
         G_temp = nx.Graph()
         G_temp.add_nodes_from(self.G.nodes(data=True))
