@@ -56,12 +56,12 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         self.create_graph(node_data=node_data, edge_data=edge_data)
 
         # Handle optional parameters for recovery_analysis with default values
-        num_thread_param = 8
+        num_cpu_param = 8
         if (
-            not self.get_parameter("num_thread") is None
-            and self.get_parameter("num_thread") > 0
+            not self.get_parameter("num_cpu") is None
+            and self.get_parameter("num_cpu") > 0
         ):
-            num_thread_param = self.get_parameter("num_thread")
+            num_cpu_param = self.get_parameter("num_cpu")
 
         time_step_param = 7
         if (
@@ -76,7 +76,7 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         ) = self.recovery_analysis(
             building_shapefile=building_data,
             pole_damage_mcs_samples_df=pole_damage_mcs_samples_df,
-            num_thread=num_thread_param,
+            num_cpu=num_cpu_param,
             time_step=time_step_param,
             consider_protective_devices=self.get_parameter(
                 "consider_protective_devices"
@@ -123,9 +123,9 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
                     "type": str,
                 },
                 {
-                    "id": "num_thread",
+                    "id": "num_cpu",
                     "required": False,
-                    "description": "Number of threads to use",
+                    "description": "Number of CPUs to use",
                     "type": int,
                 },
                 {
@@ -698,7 +698,7 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         self,
         building_shapefile=None,
         pole_damage_mcs_samples_df=None,
-        num_thread=1,
+        num_cpu=1,
         time_step=7,
         consider_protective_devices=True,
     ):
@@ -781,7 +781,7 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
             failure_link_dict=failure_link_dict,
             time_step=time_step,
             building_gdf=self.building_gdf,
-            num_workers=num_thread,
+            num_workers=num_cpu,
         )
 
         power_final_results = gpd.GeoDataFrame(
