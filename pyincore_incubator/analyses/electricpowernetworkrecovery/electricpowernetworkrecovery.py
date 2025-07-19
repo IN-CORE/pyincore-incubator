@@ -23,14 +23,9 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         self.crs = "epsg:4326"
         self.sample_num = 10
         self.num_crew = 20
-        self.seed_num = 1234
 
     def run(self):
         """Executes power network analysis."""
-        # Set default values first
-        self.sample_num = 10
-        self.num_crew = 20
-
         # Override with user-defined values if provided and valid
         if (
             not self.get_parameter("num_samples") is None
@@ -215,10 +210,17 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
         edges_gdf = gpd.GeoDataFrame(edges, crs=self.crs)
 
         # add edge attributes to the geopandas dataframe
-        for attr in graph.edges[edge]:
-            edges_gdf[attr] = pd.Series(
-                {edge: graph.edges[edge][attr] for edge in graph.edges()}
-            ).to_numpy()
+        if graph.edges():
+            # Get all possible attributes from the first edge
+            first_edge = next(iter(graph.edges()))
+            for attr in graph.edges[first_edge]:
+                if attr != "geometry":  # Skip geometry as it's already added
+                    edges_gdf[attr] = pd.Series(
+                        {
+                            i: graph.edges[edge][attr]
+                            for i, edge in enumerate(graph.edges())
+                        }
+                    ).to_numpy()
 
         return edges_gdf
 
