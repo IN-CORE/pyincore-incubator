@@ -179,7 +179,7 @@ class ElectricPowerNetworkRecovery(BaseAnalysis):
                     "id": "result",
                     "parent_type": "buildings",
                     "description": "GeoDataFrame of power back time results",
-                    "type": "ergo:buildingPowerRecoveryVer1",
+                    "type": "incore:buildingPowerRecoveryVer1",
                 }
             ],
         }
